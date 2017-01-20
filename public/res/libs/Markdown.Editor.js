@@ -38,6 +38,10 @@
         imagedescription: "enter image description here",
         imagedialog: "<p><b>Insert Image</b></p><p>http://example.com/images/diagram.jpg \"optional title\"<br><br>Need <a href='http://www.google.com/search?q=free+image+hosting' target='_blank'>free image hosting?</a></p>",
 
+        eyeem: "Insert EyeEm Image",
+        eyeemdescription: "enter EyeEm image description here",
+        eyeemdialog: "<p><b>Insert Image</b></p><p>http://eyeem.com/p/99033319 \"optional title\"<br>",
+
         olist: "Numbered List <ol> Ctrl/Cmd+O",
         ulist: "Bulleted List <ul> Ctrl/Cmd+U",
         litem: "List item",
@@ -64,6 +68,7 @@
     // The default text that appears in the dialog input box when entering
     // links.
     var imageDefaultText = "http://";
+    var eyeemImageDefaultText = "https://www.eyeem.com/p/99033319";
     var linkDefaultText = "http://";
 
     // -------------------------------------------------------------------
@@ -1519,6 +1524,9 @@
             buttons.image = makeButton("wmd-image-button", getString("image"), "-100px", bindCommand(function (chunk, postProcessing) {
                 return this.doLinkOrImage(chunk, postProcessing, true);
             }));
+            buttons.eyeem = makeButton("wmd-eyeem-button", getString("eyeem"), "-100px", bindCommand(function (chunk, postProcessing) {
+                return this.doEyeEmImage(chunk, postProcessing, true);
+            }));
             makeSpacer(2);
             buttons.olist = makeButton("wmd-olist-button", getString("olist"), "-120px", bindCommand(function (chunk, postProcessing) {
                 this.doList(chunk, postProcessing, true);
@@ -1745,6 +1753,106 @@
             return title ? link + ' "' + title + '"' : link;
         });
     }
+
+    commandProto.doEyeEmImage = function (chunk, postProcessing) {
+
+        chunk.trimWhitespace();
+        //chunk.findTags(/\s*!?\[/, /\][ ]?(?:\n[ ]*)?(\[.*?\])?/);
+        chunk.findTags(/\s*!?\[/, /\][ ]?(?:\n[ ]*)?(\(.*?\))?/);
+
+        var background;
+
+
+        if (chunk.endTag.length > 1 && chunk.startTag.length > 0) {
+
+            chunk.startTag = chunk.startTag.replace(/!?\[/, "");
+            chunk.endTag = "";
+            this.addLinkDef(chunk, null);
+
+        }
+        else {
+
+            // We're moving start and end tag back into the selection, since (as we're in the else block) we're not
+            // *removing* a link, but *adding* one, so whatever findTags() found is now back to being part of the
+            // link text. linkEnteredCallback takes care of escaping any brackets.
+            chunk.selection = chunk.startTag + chunk.selection + chunk.endTag;
+            chunk.startTag = chunk.endTag = "";
+
+            if (/\n\n/.test(chunk.selection)) {
+                this.addLinkDef(chunk, null);
+                return;
+            }
+            var that = this;
+            // The function to be executed when you enter a link and press OK or Cancel.
+            // Marks up the link and adds the ref.
+            var eyeemLinkEnteredCallback = function (link) {
+
+              var linkPieces = link.split(/[\s/]+/);
+              var eyeemPhotoId = linkPieces[linkPieces.length-1];
+              console.log('eyeemPhotoId', eyeemPhotoId);
+
+                background.parentNode.removeChild(background);
+
+                jQuery.ajax({
+                  url: "http://api.eyeem.com/api/v2/photos/" + eyeemPhotoId + "?client_id=pZkitFqMUZuXfj8EryWX4ONKDAML9V4R",
+                  type: "GET",
+                  crossDomain: true,
+                  dataType: "json",
+                  success: function (response) {
+
+
+                    if (link !== null) {
+
+                        // (                          $1
+                        //     [^\\]                  anything that's not a backslash
+                        //     (?:\\\\)*              an even number (this includes zero) of backslashes
+                        // )
+                        // (?=                        followed by
+                        //     [[\]]                  an opening or closing bracket
+                        // )
+                        //
+                        // In other words, a non-escaped bracket. These have to be escaped now to make sure they
+                        // don't count as the end of the link or similar.
+                        // Note that the actual bracket has to be a lookahead, because (in case of to subsequent brackets),
+                        // the bracket in one match may be the "not a backslash" character in the next match, so it
+                        // should not be consumed by the first match.
+                        // The "prepend a space and finally remove it" steps makes sure there is a "not a backslash" at the
+                        // start of the string, so this also works if the selection begins with a bracket. We cannot solve
+                        // this by anchoring with ^, because in the case that the selection starts with two brackets, this
+                        // would mean a zero-width match at the start. Since zero-width matches advance the string position,
+                        // the first bracket could then not act as the "not a backslash" for the second.
+                        chunk.selection = (" " + chunk.selection).replace(/([^\\](?:\\\\)*)(?=[[\]])/g, "$1\\").substr(1);
+
+                        /*
+                        var linkDef = " [999]: " + properlyEncoded(link);
+
+                        var num = that.addLinkDef(chunk, linkDef);
+                        */
+                        chunk.startTag = "[//]: # (p:" + eyeemPhotoId + ") \r\n![";
+                        chunk.endTag = "](" + properlyEncoded(response.photo.photoUrl) + ")";
+
+                        if (!chunk.selection) {
+                            chunk.selection = that.getString("eyeemdescription");
+                        }
+                    }
+
+                    postProcessing();
+
+                    console.log('response', response);
+                  },
+                  error: function (xhr, status) {
+                    alert("error");
+                  }
+                });
+            };
+
+            background = ui.createBackground();
+
+            ui.prompt(this.getString("eyeemdialog"), eyeemImageDefaultText, eyeemLinkEnteredCallback);
+
+            return true;
+        }
+    };
 
     commandProto.doLinkOrImage = function (chunk, postProcessing, isImage) {
 
