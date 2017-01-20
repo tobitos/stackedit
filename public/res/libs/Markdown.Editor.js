@@ -40,7 +40,7 @@
 
         eyeem: "Insert EyeEm Image",
         eyeemdescription: "enter EyeEm image description here",
-        eyeemdialog: "<p><b>Insert Image</b></p><p>http://eyeem.com/p/99033319 \"optional title\"<br>",
+        eyeemdialog: "<p><b>Insert EyeEm Image URL</b></p><p>http://eyeem.com/p/99033319 \"optional title\"<br>",
 
         olist: "Numbered List <ol> Ctrl/Cmd+O",
         ulist: "Bulleted List <ul> Ctrl/Cmd+U",
@@ -68,7 +68,7 @@
     // The default text that appears in the dialog input box when entering
     // links.
     var imageDefaultText = "http://";
-    var eyeemImageDefaultText = "https://www.eyeem.com/p/99033319";
+    var eyeemImageDefaultText = "https://www.eyeem.com/p/";
     var linkDefaultText = "http://";
 
     // -------------------------------------------------------------------
@@ -1787,7 +1787,19 @@
             // Marks up the link and adds the ref.
             var eyeemLinkEnteredCallback = function (link) {
 
-              var linkPieces = link.split(/[\s/]+/);
+              const uberTrim = function(s) {
+                return s.length >= 2 && (s[0] === s[s.length - 1]) ?
+                s.slice(1, -1).trim()
+                : s;
+              }
+
+              const linkPiecesBlank = link.split("\"");
+
+              console.log('linkPiecesBlank', linkPiecesBlank);
+
+              chunk.selection = linkPiecesBlank[linkPiecesBlank.length - 2] || that.getString("eyeemdescription");
+
+              var linkPieces = linkPiecesBlank[0].trim().split(/[\s/]+/);
               var eyeemPhotoId = linkPieces[linkPieces.length-1];
               console.log('eyeemPhotoId', eyeemPhotoId);
 
@@ -1830,10 +1842,6 @@
                         */
                         chunk.startTag = "[//]: # (p:" + eyeemPhotoId + ") \r\n![";
                         chunk.endTag = "](" + properlyEncoded(response.photo.photoUrl) + ")";
-
-                        if (!chunk.selection) {
-                            chunk.selection = that.getString("eyeemdescription");
-                        }
                     }
 
                     postProcessing();
