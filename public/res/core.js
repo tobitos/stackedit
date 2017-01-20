@@ -276,7 +276,7 @@ define([
 		$("#wmd-quote-button").append($('<i class="icon-indent-right">')).appendTo($btnGroupElt);
 		$("#wmd-code-button").append($('<i class="icon-code">')).appendTo($btnGroupElt);
 		$("#wmd-image-button").append($('<i class="icon-picture">')).appendTo($btnGroupElt);
-   $("#wmd-eyeem-button").append($('<i class="icon-picture">')).appendTo($btnGroupElt);
+   $("#wmd-eyeem-button").append($('<i class="icon-camera">')).appendTo($btnGroupElt);
 		$btnGroupElt = $('.wmd-button-group3');
 		$("#wmd-olist-button").append($('<i class="icon-list-numbered">')).appendTo($btnGroupElt);
 		$("#wmd-ulist-button").append($('<i class="icon-list-bullet">')).appendTo($btnGroupElt);
